@@ -255,7 +255,7 @@ app.post("/print-todo", async (req, res) => {
 app.get("/printer-status", (req, res) => {
   res.json({
     connected: printerConnected,
-    type: "EPSON", // or ELGIN
+    type: "EPSON",
     interface: `usb://${VENDOR_ID.toString(16).padStart(
       4,
       "0"
