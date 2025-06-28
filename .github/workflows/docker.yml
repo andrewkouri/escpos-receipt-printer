@@ -1,0 +1,74 @@
+name: Build & Publish Docker image
+
+on:
+  push:
+    branches: [main] # every commit to main
+    tags: ["v*"] # semantic-version tags: v1.2.3, v2.0.0-rc1 …
+  pull_request: # compile-time safety check, no push
+    branches: [main]
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    permissions: # least-privilege
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # multi-arch needs QEMU emulation
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      # only push for non-PR events
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # canonical tag & label set
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # branch builds  → main-<sha>, feature-xyz-<sha>
+            type=ref,event=branch,format={{refname}}-{{sha}}
+            # pull requests → pr-123
+            type=ref,event=pr
+            # release tags   → v1.2.3, 1.2, 1
+            type=semver,pattern={{version}},enable={{is_tag}}
+            type=semver,pattern={{major}}.{{minor}},enable={{is_tag}}
+            type=semver,pattern={{major}},enable={{is_tag}}
+            # immutable image for every commit
+            type=sha
+            # latest only on the default branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build & (optionally) push
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # quick visibility of what was produced
+      - name: Publish digest to summary
+        if: github.event_name != 'pull_request'
+        run: |
+          echo 'Image digest: `${{ steps.build.outputs.digest }}`' >> "$GITHUB_STEP_SUMMARY"
