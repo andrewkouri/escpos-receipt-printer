@@ -19,10 +19,15 @@ npm install
 
 2. Connect your thermal printer via USB
 
-3. Update the USB vendor/product IDs in `todo-printer-server.js` if needed:
-```javascript
-const VENDOR_ID = 0x0fe6;  // Your printer's vendor ID
-const PRODUCT_ID = 0x811e; // Your printer's product ID
+3. Copy `.env.example` to `.env` and configure your printer:
+```bash
+cp .env.example .env
+```
+
+4. Update the printer IDs in `.env` file:
+```bash
+PRINTER_VENDOR_ID=0x0fe6  # Your printer's vendor ID
+PRINTER_PRODUCT_ID=0x811e # Your printer's product ID
 ```
 
 ## Usage

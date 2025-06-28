@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require("express");
 const usb = require("usb");
 const {
@@ -7,8 +8,11 @@ const {
 } = require("node-thermal-printer");
 
 // Your printer USB info
-const VENDOR_ID = 0x20d1;
-const PRODUCT_ID = 0x7008;
+if (!process.env.PRINTER_VENDOR_ID || !process.env.PRINTER_PRODUCT_ID) {
+  throw new Error('PRINTER_VENDOR_ID and PRINTER_PRODUCT_ID environment variables are required');
+}
+const VENDOR_ID = parseInt(process.env.PRINTER_VENDOR_ID, 16);
+const PRODUCT_ID = parseInt(process.env.PRINTER_PRODUCT_ID, 16);
 
 class TodoPrinter {
   constructor() {
