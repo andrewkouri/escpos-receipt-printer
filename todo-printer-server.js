@@ -1,4 +1,4 @@
-require('dotenv').config();
+require("dotenv").config();
 const express = require("express");
 const usb = require("usb");
 const {
@@ -7,12 +7,28 @@ const {
   CharacterSet,
 } = require("node-thermal-printer");
 
-// Your printer USB info
-if (!process.env.PRINTER_VENDOR_ID || !process.env.PRINTER_PRODUCT_ID) {
-  throw new Error('PRINTER_VENDOR_ID and PRINTER_PRODUCT_ID environment variables are required');
+// Printer configuration
+const PRINTER_TYPE = process.env.PRINTER_TYPE || "EPSON";
+
+// Check if network or USB mode
+const useNetworkPrinter = !!process.env.PRINTER_NETWORK_IP;
+
+// USB configuration
+let VENDOR_ID, PRODUCT_ID;
+if (!useNetworkPrinter) {
+  if (!process.env.PRINTER_VENDOR_ID || !process.env.PRINTER_PRODUCT_ID) {
+    throw new Error(
+      "For USB mode: PRINTER_VENDOR_ID and PRINTER_PRODUCT_ID environment variables are required. " +
+        "For network mode: Set PRINTER_NETWORK_IP instead."
+    );
+  }
+  VENDOR_ID = parseInt(process.env.PRINTER_VENDOR_ID, 16);
+  PRODUCT_ID = parseInt(process.env.PRINTER_PRODUCT_ID, 16);
 }
-const VENDOR_ID = parseInt(process.env.PRINTER_VENDOR_ID, 16);
-const PRODUCT_ID = parseInt(process.env.PRINTER_PRODUCT_ID, 16);
+
+// Network configuration
+const NETWORK_IP = process.env.PRINTER_NETWORK_IP;
+const NETWORK_PORT = process.env.PRINTER_NETWORK_PORT || "9100";
 
 class TodoPrinter {
   constructor() {
@@ -21,24 +37,40 @@ class TodoPrinter {
 
   async connect() {
     try {
-      // Find the USB device first
-      const device = usb.findByIds(VENDOR_ID, PRODUCT_ID);
+      if (useNetworkPrinter) {
+        // Network printer connection
+        console.log(
+          `Attempting network connection to ${NETWORK_IP}:${NETWORK_PORT}`
+        );
 
-      if (!device) {
-        return false;
+        this.printer = new ThermalPrinter({
+          type: PrinterTypes[PRINTER_TYPE],
+          interface: `tcp://${NETWORK_IP}:${NETWORK_PORT}`,
+          characterSet: CharacterSet.PC852_LATIN2,
+          removeSpecialCharacters: false,
+          lineCharacter: "=",
+        });
+      } else {
+        // USB printer connection
+        const device = usb.findByIds(VENDOR_ID, PRODUCT_ID);
+
+        if (!device) {
+          console.log("USB device not found");
+          return false;
+        }
+
+        console.log("USB device found, connecting...");
+        this.printer = new ThermalPrinter({
+          type: PrinterTypes[PRINTER_TYPE],
+          interface: `usb://${VENDOR_ID.toString(16).padStart(
+            4,
+            "0"
+          )}:${PRODUCT_ID.toString(16).padStart(4, "0")}`,
+          characterSet: CharacterSet.PC852_LATIN2,
+          removeSpecialCharacters: false,
+          lineCharacter: "=",
+        });
       }
-
-      // Initialize printer with node-thermal-printer using USB interface
-      this.printer = new ThermalPrinter({
-        type: PrinterTypes.EPSON,
-        interface: `usb://${VENDOR_ID.toString(16).padStart(
-          4,
-          "0"
-        )}:${PRODUCT_ID.toString(16).padStart(4, "0")}`,
-        characterSet: CharacterSet.PC852_LATIN2,
-        removeSpecialCharacters: false,
-        lineCharacter: "=",
-      });
 
       // Test connection
       const isConnected = await this.printer.isPrinterConnected();
@@ -167,6 +199,13 @@ class TodoPrinter {
     if (currentLine) lines.push(currentLine);
     return lines.join("\n");
   }
+
+  disconnect() {
+    // Cleanup method for graceful shutdown
+    if (this.printer) {
+      console.log("Printer disconnected");
+    }
+  }
 }
 
 // Create Express app
@@ -197,7 +236,7 @@ app.listen(port, async () => {
   } else {
     console.log("🖨️  Printer status: Not connected ❌");
     console.log(
-      "    Make sure the printer is powered on and connected via USB"
+      "    Make sure the printer is powered on and connected via USB or network"
     );
   }
 });
@@ -257,16 +296,26 @@ app.post("/print-todo", async (req, res) => {
 
 // Get printer status
 app.get("/printer-status", (req, res) => {
-  res.json({
+  const status = {
     connected: printerConnected,
-    type: "EPSON",
-    interface: `usb://${VENDOR_ID.toString(16).padStart(
+    type: PRINTER_TYPE,
+    mode: useNetworkPrinter ? "network" : "usb",
+  };
+
+  if (useNetworkPrinter) {
+    status.interface = `tcp://${NETWORK_IP}:${NETWORK_PORT}`;
+    status.network_ip = NETWORK_IP;
+    status.network_port = NETWORK_PORT;
+  } else {
+    status.interface = `usb://${VENDOR_ID.toString(16).padStart(
       4,
       "0"
-    )}:${PRODUCT_ID.toString(16).padStart(4, "0")}`,
-    vendor_id: `0x${VENDOR_ID.toString(16)}`,
-    product_id: `0x${PRODUCT_ID.toString(16)}`,
-  });
+    )}:${PRODUCT_ID.toString(16).padStart(4, "0")}`;
+    status.vendor_id = `0x${VENDOR_ID.toString(16)}`;
+    status.product_id = `0x${PRODUCT_ID.toString(16)}`;
+  }
+
+  res.json(status);
 });
 
 // Basic usage info endpoint
