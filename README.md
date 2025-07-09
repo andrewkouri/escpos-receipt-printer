@@ -1,55 +1,97 @@
 # Todo Ticket Printer Server
 
-An Express.js server that prints todo tickets to a thermal receipt printer via USB.
+Node.js application for printing TODO tickets on thermal receipt printers.
 
 ## Features
 
 - 🎫 Print todo tickets with title, assignee, and description
-- 🖨️ Direct USB thermal printer integration
+- 🖨️ Support for USB and network thermal printers
 - 📋 RESTful API endpoints
-- ✅ Built-in completion checkbox and notes section
+- 🐳 Docker support (recommended for network printers)
 - 📱 Easy to integrate with other applications
 
-## Installation
+## Quick Start
 
-1. Install dependencies:
-```bash
-npm install
-```
+### Docker (Recommended for Network Printers, USB on Linux only)
 
-2. Connect your thermal printer via USB
+1. **Configure your printer:**
 
-3. Update the USB vendor/product IDs in `todo-printer-server.js` if needed:
-```javascript
-const VENDOR_ID = 0x0fe6;  // Your printer's vendor ID
-const PRODUCT_ID = 0x811e; // Your printer's product ID
-```
+   ```bash
+   cp .env.example .env
+   ```
 
-## Usage
+2. **Edit `.env` for your printer:**
 
-### Start the Server
+   **For Network Printer (recommended):**
 
-```bash
-npm run todo-server
-```
+   ```bash
+   PRINTER_NETWORK_IP=10.0.0.237  # Your printer's IP
+   PRINTER_NETWORK_PORT=9100      # Usually 9100
+   ```
 
-The server will start on `http://localhost:3000`
+   **For USB Printer (Linux only):**
 
-### API Endpoints
+   ```bash
+   # Find your printer's USB IDs with: lsusb
+   PRINTER_VENDOR_ID=0x20d1
+   PRINTER_PRODUCT_ID=0x7008
+   ```
 
-#### POST /print-todo
-Print a todo ticket
+3. **Run with Docker Compose:**
+
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Test the API:**
+   ```bash
+   curl -X POST http://localhost:3000/print-todo \
+     -H "Content-Type: application/json" \
+     -d '{
+       "title": "Test the printer setup",
+       "assignee": "John Doe",
+       "description": "Make sure the printer is working correctly"
+     }'
+   ```
+
+### Local Development
+
+1. **Install dependencies:**
+
+   ```bash
+   npm install
+   ```
+
+2. **Configure environment:**
+
+   ```bash
+   cp .env.example .env
+   # Edit .env with your printer settings
+   ```
+
+3. **Run the server:**
+   ```bash
+   npm run todo-server
+   ```
+
+## API Endpoints
+
+### POST /print-todo
+
+Print a TODO ticket.
 
 **Request Body:**
+
 ```json
 {
-  "title": "Fix the login bug",           // Required: Main task title
-  "assignee": "John Doe",                 // Optional: Person assigned
-  "description": "Users cannot login..."  // Optional: Task details
+  "title": "Fix the login bug", // Required: Main task title
+  "assignee": "John Doe", // Optional: Person assigned
+  "description": "Users cannot login..." // Optional: Task details
 }
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -63,18 +105,36 @@ Print a todo ticket
 }
 ```
 
-#### GET /health
-Check server and printer status
+### GET /health
 
-#### GET /printer-status
-Get printer connection details
+Check server and printer status.
 
-#### GET /
+### GET /printer-status
+
+Get detailed printer connection information.
+
+### GET /
+
 API documentation and usage examples
+
+## Configuration
+
+Configure your printer in the `.env` file. Choose either USB or Network mode:
+
+#### USB Mode
+
+- `PRINTER_VENDOR_ID`: USB Vendor ID (hex format, e.g., `0x20d1`)
+- `PRINTER_PRODUCT_ID`: USB Product ID (hex format, e.g., `0x7008`)
+
+#### Network Mode
+
+- `PRINTER_NETWORK_IP`: Network printer IP address
+- `PRINTER_NETWORK_PORT`: Network printer port (default: 9100)
 
 ## Examples
 
 ### Using curl
+
 ```bash
 # Simple ticket with just a title
 curl -X POST http://localhost:3000/print-todo \
@@ -86,12 +146,13 @@ curl -X POST http://localhost:3000/print-todo \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Fix login bug",
-    "assignee": "John Doe", 
+    "assignee": "John Doe",
     "description": "Users are unable to login with special characters in their passwords"
   }'
 ```
 
 ### Using the test client
+
 ```bash
 # Simple ticket
 node test-client.js "Fix login bug"
@@ -104,51 +165,63 @@ node test-client.js "Fix login bug" "John Doe" "Users cannot login with special 
 ```
 
 ### Using JavaScript fetch
+
 ```javascript
-const response = await fetch('http://localhost:3000/print-todo', {
-  method: 'POST',
+const response = await fetch("http://localhost:3000/print-todo", {
+  method: "POST",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    title: 'Update documentation',
-    assignee: 'Alice Smith',
-    description: 'Add API documentation for the new endpoints'
-  })
+    title: "Update documentation",
+    assignee: "Alice Smith",
+    description: "Add API documentation for the new endpoints",
+  }),
 });
 
 const result = await response.json();
 console.log(result);
 ```
 
+## Docker Notes
+
+### Recommended: Network Mode
+
+For best compatibility across all platforms, use network-connected printers:
+
+1. Configure your printer for network access
+2. Set `PRINTER_NETWORK_IP` in your `.env` file
+3. Run with Docker: `docker-compose up -d`
+
+### USB Mode Limitations
+
+⚠️ **USB passthrough has platform-specific limitations:**
+
+- **Linux**: Full USB support with privileged mode
+- **macOS/Windows**: USB passthrough not supported with Docker Desktop due to virtualization
+
+**For USB printers on macOS/Windows:**
+
+1. Run natively: `npm run todo-server`
+2. Use a Linux host for Docker deployment
+3. Convert to network printer (recommended)
 
 ## Troubleshooting
 
 ### Printer Not Found
-- Ensure printer is connected via USB
-- Check if printer is powered on
-- Verify USB vendor/product IDs match your printer
-- Try running `lsusb` (Linux/Mac) to see connected devices
 
-### Permission Errors
-- On Linux, you may need to add your user to the `lp` group
-- On Mac, you may need to grant permission to access USB devices
+1. Ensure printer is powered on and connected
+2. For USB: Check USB IDs with `lsusb`
+3. For Network: Verify IP address is reachable
+4. Check your `.env` configuration
 
-### Print Quality Issues
-- Check printer paper
-- Ensure printer drivers are not interfering
-- Try different ESC/POS commands if formatting looks wrong
+### Print Quality
 
+- Ensure printer has paper loaded
+- Check paper width matches expectations
 
 ## Related Files
 
 - `todo-printer-server.js` - Main server file
+- `printer.js` - Simple print test utility
 - `test-client.js` - Test client for trying the API
-
-## ESC/POS Commands Used
-
-The server uses standard ESC/POS commands for thermal printers:
-- Text formatting (bold, double height, centering)
-- Paper cutting
-- Line feeds and spacing
-- Character encoding (UTF-8)

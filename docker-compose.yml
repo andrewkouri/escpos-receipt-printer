@@ -1,0 +1,18 @@
+services:
+  todo-printer:
+    build: .
+    container_name: todo-printer-server
+    ports:
+      - "3000:3000"
+    environment:
+      - PRINTER_VENDOR_ID=${PRINTER_VENDOR_ID}
+      - PRINTER_PRODUCT_ID=${PRINTER_PRODUCT_ID}
+      - PRINTER_TYPE=${PRINTER_TYPE}
+      - PRINTER_NETWORK_IP=${PRINTER_NETWORK_IP}
+      - PRINTER_NETWORK_PORT=${PRINTER_NETWORK_PORT:-9100}
+      - NODE_ENV=production
+    privileged: true # For USB device access
+    volumes:
+      - /dev:/dev # For USB device access
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
