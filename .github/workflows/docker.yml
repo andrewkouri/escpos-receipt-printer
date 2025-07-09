@@ -47,9 +47,9 @@ jobs:
             # pull requests → pr-123
             type=ref,event=pr
             # release tags   → v1.2.3, 1.2, 1
-            type=semver,pattern={{version}},enable={{is_tag}}
-            type=semver,pattern={{major}}.{{minor}},enable={{is_tag}}
-            type=semver,pattern={{major}},enable={{is_tag}}
+            type=semver,pattern={{version}},enable={{is_default_branch}}
+            type=semver,pattern={{major}}.{{minor}},enable={{is_default_branch}}
+            type=semver,pattern={{major}},enable={{is_default_branch}}
             # immutable image for every commit
             type=sha
             # latest only on the default branch
