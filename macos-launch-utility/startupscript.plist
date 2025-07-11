@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+   <key>Label</key>
+   <string>com.user.escpos-printer-startup</string>
+
+   <key>ProgramArguments</key>
+   <array>
+       <string>/bin/zsh</string>
+       <string>/Users/YOUR_USERNAME/Developer/escpos-receipt-printer/macos-launch-utility/launch-agent-startup.zsh</string>
+   </array>
+
+   <key>RunAtLoad</key>
+   <true/>
+
+   <key>KeepAlive</key>
+   <false/>
+
+   <key>StandardOutPath</key>
+   <string>/tmp/escpos-printer-launchagent.out</string>
+
+   <key>StandardErrorPath</key>
+   <string>/tmp/escpos-printer-launchagent.err</string>
+
+   <key>WorkingDirectory</key>
+   <string>/Users/YOUR_USERNAME/Developer/escpos-receipt-printer</string>
+
+   <key>EnvironmentVariables</key>
+   <dict>
+       <key>PATH</key>
+       <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+   </dict>
+</dict>
+</plist>
